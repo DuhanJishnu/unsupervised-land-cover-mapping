@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/*.html
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+.gemini/
+
+# Local logs and scratch binaries
+*.log
+a.out
+
+# Deleted directories (safety net)
+new/
+experiments/
+
+# Binary documents and reference papers
+*.docx
+*.pdf
+
+# Large datasets and generated artifacts
+datas/
+datas/ENMAP*/
+datasets/mat_files/
+datasets/csv_files/
+processed_data/
+models/
+outputs/
+
+# Common ML/data formats that should be shared through releases or external storage
+*.npy
+*.npz
+*.mat
+*.tif
+*.tiff
+*.zip
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.hdf5

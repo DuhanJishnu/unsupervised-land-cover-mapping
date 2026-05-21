@@ -1,0 +1,63 @@
+# =============================================================================
+# HyperAttnRes Configuration
+# CS382 Minor Project: Block Attention Residuals for Hyperspectral Land Cover
+# =============================================================================
+# All five scripts (06-10) import this file via PyYAML.
+# Change a value here and it propagates everywhere — do NOT hardcode in scripts.
+
+# ── Architecture ─────────────────────────────────────────────────────────────
+embedding_dim: 64           # Final embedding dimension (same as CNN-AE for fair comparison)
+d_model: 128                # Internal transformer hidden dimension
+n_blocks: 4                 # Default number of AttnRes blocks (N). Ablation: 1,2,4,6
+n_layers_per_block: 3       # Number of transformer layers per block (S). Total = N*S = 12
+n_heads: 4                  # Number of attention heads in MHA
+ffn_ratio: 4                # FFN hidden dim = ffn_ratio * d_model = 512
+spectral_tokens: 16         # Fixed number of spectral tokens after AdaptiveAvgPool3d
+patch_size: 7               # Spatial patch size (7x7)
+
+# ── 3D CNN Stem ───────────────────────────────────────────────────────────────
+stem_channels: [32, 64, 64] # Output channels at each 3D conv stage
+stem_kernels:               # (spectral, spatial_h, spatial_w)
+  - [7, 3, 3]
+  - [5, 1, 1]
+  - [3, 1, 1]
+stem_strides:
+  - [1, 1, 1]
+  - [1, 1, 1]
+  - [2, 1, 1]               # Spectral stride=2 downsamples spectral dim
+
+# ── Training ──────────────────────────────────────────────────────────────────
+batch_size: 512             # Slightly smaller than CNN-AE due to higher model complexity
+num_workers: 8
+epochs: 50
+learning_rate: 5.0e-4
+weight_decay: 1.0e-5
+mask_ratio: 0.30            # Fraction of spectral bands to mask (Masked Spectral Reconstruction)
+
+# ── Ablation: N values to test ────────────────────────────────────────────────
+ablation_N: [1, 2, 4, 6]
+
+# ── Datasets ─────────────────────────────────────────────────────────────────
+datasets:
+  ip:
+    name: "Indian Pines"
+    code: "indian_pines"
+    n_classes: 16
+    patches_file: "processed_data/ip_all_patches.npy"
+    labels_file: "processed_data/ip_labels.npy"
+  pu:
+    name: "Pavia University"
+    code: "pavia_university"
+    n_classes: 9
+    patches_file: "processed_data/pu_all_patches.npy"
+    labels_file: "processed_data/pu_labels.npy"
+
+# ── Output Dirs ───────────────────────────────────────────────────────────────
+output_dirs:
+  training: "outputs/week6"
+  clustering: "outputs/week7"
+  analysis: "outputs/week8"
+  models: "models"
+
+# ── Random Seeds ─────────────────────────────────────────────────────────────
+random_seed: 42
