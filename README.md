@@ -20,20 +20,7 @@ Representative clustering results from the generated CSV outputs:
 
 ## Pipeline
 
-```mermaid
-flowchart LR
-    A["Hyperspectral cube"] --> B["Normalization and noisy-band removal"]
-    B --> C["Patch extraction"]
-    B --> D["PCA baseline"]
-    C --> E["CNN autoencoder"]
-    C --> F["HyperAttnRes transformer"]
-    D --> G["Clustering"]
-    E --> G
-    F --> G
-    G --> H["Metrics and visualizations"]
-    H --> I["Spatial smoothing"]
-```
-
+![Pipeline_Diagram](/docs/image.png)
 ## Repository Structure
 
 ```text
