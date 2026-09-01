@@ -26,7 +26,7 @@ still credible. More focused evidence remains in `PROJECT_AUDIT.md`,
 13. [Prioritized roadmap](#13-prioritized-execution-roadmap)
 14. [Paper experiment matrix](#14-paper-experiment-matrix)
 15. [Recommended paper structure](#15-recommended-paper-structure)
-16. [Immediate frozen command](#16-immediate-frozen-command)
+16. [Immediate implementation task](#16-immediate-implementation-task)
 17. [Decision log](#17-decision-log)
 18. [Definition of paper readiness](#18-definition-of-paper-readiness)
 
@@ -48,17 +48,17 @@ The current scientific result is mixed:
 - Exact uniform prototype balancing conflicts with the strongly imbalanced
   semantic structure of Indian Pines when applied for too long.
 - A label-free prototype-usage stopping rule preserves the best early
-  checkpoint on the development scene, but it has not yet been evaluated on
-  the held Pavia University scene.
+  checkpoint on the development scene, but its first frozen Pavia transfer
+  fails to beat raw/PCA baselines. Epoch-level stopping overshoots on the much
+  larger scene.
 - The spatial graph has not demonstrated a reliable benefit under the matched
   long-run schedule. It is an ablation, not part of the selected held-scene
   protocol.
 
-The most defensible immediate direction is therefore not a larger architecture.
-It is a frozen held-scene test of the compact no-spatial model with label-free
-early stopping, followed by repeated seeds, estimated-k evaluation, and a
-better non-uniform prototype prior if the held result confirms the current
-failure mode.
+The most defensible immediate direction is therefore not a larger architecture
+or post-hoc Pavia tuning. It is step/sample-level prototype monitoring developed
+without Pavia label selection, a better non-uniform prior, and validation on a
+new untouched scene.
 
 ## 2. Claim status
 
@@ -81,12 +81,16 @@ failure mode.
    continued reconstruction/view learning still changes the embedding.
 9. Label-free early stopping at usage entropy 0.85 preserves the best observed
    no-spatial development checkpoint.
+10. The frozen 0.85 rule stops Pavia after one epoch at usage entropy 0.9433 and
+    underperforms raw/PCA KMeans on every primary semantic metric.
+11. Epoch-level stopping is not scale independent because an epoch contains
+    very different numbers of optimizer steps across scenes.
 
 ### Not yet supported
 
 1. The learned method is better than raw spectra overall.
 2. The spatial graph improves results across seeds or scenes.
-3. The entropy threshold transfers to Pavia or another sensor.
+3. A fixed epoch-level entropy threshold transfers successfully across scenes.
 4. The method is robust without oracle knowledge of class count.
 5. The method generalizes across scenes rather than fitting each scene
    transductively.
@@ -439,6 +443,23 @@ The selected development protocol is:
 Raw KMeans still wins Indian Pines NMI, Macro-F1, and mIoU. No claim of overall
 superiority is justified.
 
+### Frozen held Pavia result
+
+The selected no-spatial, eight-epoch-horizon, usage-entropy-0.85 protocol was
+run once on Pavia without semantic checkpoint probes. It stopped after one
+epoch at usage entropy 0.9433.
+
+| Method | ARI | NMI | ACC | Macro-F1 | mIoU | Silhouette |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw + KMeans | **0.3125** | **0.5466** | **0.5363** | **0.5389** | **0.4418** | 0.4075 |
+| PCA-30 + KMeans | 0.3121 | 0.5463 | 0.5360 | 0.5389 | 0.4418 | 0.4086 |
+| Frozen learned protocol | 0.2475 | 0.4863 | 0.4446 | 0.4865 | 0.3606 | **0.4595** |
+
+The held transfer fails. The learned method improves class 7 F1 from zero to
+0.4311 but weakens several major classes and misses class 3. Better silhouette
+again contradicts worse semantic performance. This result must remain in the
+paper or project record and must not be erased by post-hoc Pavia tuning.
+
 ### Per-class failure pattern
 
 The three-epoch full model had zero F1 for Indian Pines classes 1, 3, and 16.
@@ -466,13 +487,14 @@ overall metrics.
 
 - Prototype alignment helps early Indian Pines ARI/ACC.
 - No-spatial is preferable to the current graph implementation.
-- Usage-entropy early stopping is a useful unsupervised control signal.
+- Usage entropy is a useful collapse/over-balancing diagnostic, but epoch-level
+  threshold stopping is not scene-scale invariant.
 - Class imbalance is the main reason exact equipartition is unsafe.
 
 ### Low confidence or unknown
 
-- Whether entropy 0.85 transfers between scenes and class counts.
-- Whether the same method improves Pavia.
+- Whether step-level or sample-normalized entropy stopping transfers.
+- Whether a revised method improves a new untouched held scene.
 - Whether five-seed mean performance exceeds raw baselines.
 - Whether estimated-k results remain competitive.
 - Whether better spatial edges help after prototype dynamics are corrected.
@@ -503,7 +525,7 @@ overall metrics.
 - Learned results are currently seed 42 only.
 - Indian Pines has been used for decisions and cannot be presented as an
   unbiased held benchmark.
-- Pavia learned embeddings have not yet been run with the frozen protocol.
+- The first frozen Pavia learned run failed against raw/PCA baselines.
 - The third labeled benchmark is not selected or downloaded.
 - GMM and several planned baselines have implementation support but no recorded
   real comparison in the new experiment log.
@@ -545,29 +567,22 @@ overall metrics.
 The following options are ordered by scientific value and dependency, not by
 novelty.
 
-### P0 — Frozen held-scene Pavia run
+### P0 — Scale-independent stopping and new held validation
 
-**Question:** Does the Indian Pines-selected label-free protocol transfer
-without Pavia label-dependent tuning?
+The frozen Pavia run is complete and failed. Its label-free trace reveals that
+epoch-level monitoring overshot the target because Pavia has roughly ten times
+the valid pixels and optimizer steps per epoch.
 
-Run:
+Implement next on Indian Pines or another development scene:
 
-```bash
-python research_pipeline.py train --dataset pu --ablation no_spatial \
-  --epochs 8 --scheduler-epochs 8 \
-  --early-stop-usage-entropy 0.85 --seeds 42
-```
-
-Do not pass `--evaluation-every`. Inspect labels only after the run ends.
-
-Possible outcomes:
-
-- If it beats raw/PCA on several primary metrics, repeat five seeds immediately.
-- If it stops much earlier/later but remains competitive, the entropy rule may
-  transfer and becomes a candidate contribution.
-- If it fails, do not tune the threshold on Pavia. Treat the failure as evidence
-  that a fixed entropy threshold is scene dependent and move to a scale-adaptive
-  prior/stopping rule using Indian Pines or a separate development scene.
+1. Measure prototype usage every fixed number of optimizer steps, not only at
+   epoch boundaries.
+2. Use an exponential moving average or consecutive-window requirement so a
+   noisy batch cannot stop training.
+3. Record total samples and optimizer updates at threshold crossing.
+4. Preserve a checkpoint at the first valid crossing.
+5. Do not validate the revision by repeatedly selecting on Pavia labels. Use a
+   newly acquired third scene as the next untouched held test.
 
 ### P1 — Five-seed confirmation
 
@@ -698,8 +713,9 @@ main paper and retain it as an appendix or negative result.
 
 | Priority | Experiment | Dependency | Approximate cost | Decision enabled |
 | --- | --- | --- | --- | --- |
-| 0 | Pavia frozen one-seed run | Current code | High | Does stopping/method transfer? |
-| 1 | Five seeds on selected protocol | Pavia one-seed result | Very high | Are gains statistically stable? |
+| 0 | Step/sample-level stopping monitor | Develop without Pavia label selection | Medium | Is stopping scene-scale invariant? |
+| 0 | Acquire third labeled scene | Dataset/provenance decision | Medium | Provides a new untouched held test |
+| 1 | Five seeds on a revised selected protocol | New held one-seed result | Very high | Are gains statistically stable? |
 | 1 | PCA-GMM and masked-AE real baselines | Current code/minor additions | Medium | Is comparison set credible? |
 | 1 | Estimated-k on raw/PCA/learned features | Current estimator | Medium | How dependent is method on oracle k? |
 | 2 | Relaxed/non-uniform prototype prior | Held result/failure diagnosis | Medium-high | Can Macro-F1/mIoU improve? |
@@ -777,24 +793,13 @@ Columns:
 11. Reproducibility statement
 12. Conclusion
 
-## 16. Immediate frozen command
+## 16. Immediate implementation task
 
-The next scientifically valid command is the first held Pavia run:
-
-```bash
-.venv/bin/python research_pipeline.py train \
-  --dataset pu \
-  --ablation no_spatial \
-  --epochs 8 \
-  --scheduler-epochs 8 \
-  --early-stop-usage-entropy 0.85 \
-  --seeds 42
-```
-
-Do not add `--evaluation-every`. Do not change threshold, architecture,
-normalization, patch size, embedding size, learning rate, or cluster count after
-seeing Pavia labels. If the protocol fails, record the failure and develop the
-next method on Indian Pines or a separate development scene.
+The frozen Pavia command has been completed and failed. The immediate valid
+implementation task is step-level, sample-normalized prototype-usage monitoring
+developed without selecting on Pavia labels. The next semantic validation must
+use a new untouched scene. Repeated Pavia variants would convert the held scene
+into a development set and invalidate the original protocol claim.
 
 ## 17. Decision log
 
@@ -809,16 +814,18 @@ next method on Indian Pines or a separate development scene.
 | Deprioritize 2x prototypes | Worse three-epoch metrics | Active unless better merging prior exists |
 | Deprioritize current graph | No matched convergence advantage | Active |
 | Use no-spatial for held evaluation | Best matched early development checkpoint | Frozen for Pavia |
-| Stop at prototype-use entropy 0.85 | Label-free rule preserves development peak | Frozen test rule |
+| Stop at prototype-use entropy 0.85 | Preserves development peak but fails held Pavia | Completed negative transfer |
 | Separate scheduler horizon from stopping time | Earlier trajectories were incomparable | Final implementation |
 | Declare Indian Pines development, Pavia held | Prevent label-dependent Pavia tuning | Final protocol |
 | Defer HyperAttnRes | Objective/protocol uncertainty dominates | Active |
+| Record frozen Pavia transfer as failure | Learned method loses all primary semantic metrics | Final evidence |
+| Do not tune revised stopping on Pavia | Held labels have now been inspected | Final protocol |
 
 ## 18. Definition of paper readiness
 
 The project is not paper-ready until all of the following are true:
 
-- Pavia held evaluation is complete without checkpoint label probes.
+- Pavia held failure is reported transparently without post-hoc replacement.
 - At least five seeds are complete for main learned methods.
 - GMM, masked-AE, and other declared main baselines are recorded.
 - Oracle-k and estimated-k results are reported.

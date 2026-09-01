@@ -29,6 +29,11 @@ model-selection diagnostic, not a final paper table.
 The learned objective currently improves ARI and matched accuracy, but not NMI,
 Macro-F1, or mIoU. See the experiment log for failure analysis and limitations.
 
+The first frozen Pavia transfer has now been completed. It stopped after one
+epoch and underperformed raw/PCA KMeans on all primary semantic metrics. This
+negative held result is retained in the master ledger; Pavia will not be used
+for post-hoc stopping-rule tuning.
+
 ## Pipeline
 
 ![Pipeline_Diagram](/docs/image.png)

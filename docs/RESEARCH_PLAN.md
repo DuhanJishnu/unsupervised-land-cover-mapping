@@ -60,6 +60,11 @@ Protocol-selection roles are now explicit: Indian Pines is the development
 scene; Pavia University is the first held scene. Epoch/stopping rules selected
 from Indian Pines must be frozen before inspecting Pavia semantic metrics.
 
+Held-result update: the frozen Pavia run stopped after one epoch at prototype
+usage entropy 0.9433 and underperformed raw/PCA baselines on every primary
+semantic metric. Pavia must not now be used for post-hoc threshold tuning. A
+revised step-level stopping rule requires a new untouched held scene.
+
 EnMAP is initially an unlabeled external case study. Quantitative semantic
 claims require an independent reference map that is never used for training.
 

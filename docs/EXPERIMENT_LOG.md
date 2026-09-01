@@ -190,3 +190,40 @@ learned method is not yet claimed to dominate the baseline.
 
 Generated comparison and learning curves are under
 `outputs/research/convergence-ip-20260901/`.
+
+## 2026-09-01 — Frozen held Pavia evaluation
+
+The Indian Pines-selected protocol was executed without semantic checkpoint
+probes or Pavia-dependent tuning: `no_spatial`, maximum eight epochs, cosine
+horizon eight, label-free early stop at prototype-use entropy 0.85, robust
+normalization, patch size 7, embedding dimension 64, oracle k=9, and seed 42.
+
+Pavia has 207,400 valid training pixels and 42,776 labeled evaluation pixels.
+Usage entropy reached 0.9433 after the first epoch, so the frozen rule stopped
+training at epoch 1. Only then were labels used for final evaluation.
+
+| Method | ARI | NMI | ACC | Macro-F1 | mIoU | Silhouette | DBI |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Raw + KMeans | **0.3125** | **0.5466** | **0.5363** | **0.5389** | **0.4418** | 0.4075 | 0.8022 |
+| PCA-30 + KMeans | 0.3121 | 0.5463 | 0.5360 | 0.5389 | 0.4418 | 0.4086 | 0.8003 |
+| Frozen learned protocol | 0.2475 | 0.4863 | 0.4446 | 0.4865 | 0.3606 | **0.4595** | **0.7484** |
+
+Run ID: `pu-aligned-no_spatial-52a89c4b`. Training took 749.35 seconds;
+embedding inference and KMeans took 61.77 seconds. The model has 60,999
+parameters. Generated comparisons are under
+`outputs/research/held-pavia-20260901/`.
+
+This is a failed held transfer. The learned method loses 0.0650 ARI, 0.0603
+NMI, 0.0916 ACC, 0.0523 Macro-F1, and 0.0812 mIoU against raw KMeans. Its
+better silhouette and DBI again do not imply better semantic mapping.
+
+Per-class analysis is mixed. The learned representation recovers class 7 with
+F1 0.4311 where raw KMeans scores zero, and keeps class 9 near-perfect, but it
+misses class 3 entirely and substantially weakens classes 1, 2, 5, and 8.
+
+Protocol conclusion: do not tune the 0.85 threshold on Pavia or rerun variants
+selected using these labels. The rule is scene-size dependent at epoch
+granularity: one Pavia epoch contains roughly ten times the optimization steps
+of Indian Pines and overshoots the target to 0.943. Future development should
+monitor usage within epochs in optimizer-step or sample units and validate a
+revised rule on a new untouched scene.
