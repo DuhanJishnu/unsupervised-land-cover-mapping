@@ -75,11 +75,14 @@ class HyperspectralAutoencoder(nn.Module):
     Spatial-Spectral CNN Autoencoder.
     Compresses a (Bands x H x W) patch into a 64D embedding, then reconstructs it.
     """
-    def __init__(self, in_bands, embedding_dim=64):
+    def __init__(self, in_bands, embedding_dim=64, output_activation="sigmoid"):
         super(HyperspectralAutoencoder, self).__init__()
         
         self.in_bands = in_bands
         self.embedding_dim = embedding_dim
+        if output_activation not in {"sigmoid", "linear"}:
+            raise ValueError("output_activation must be 'sigmoid' or 'linear'")
+        self.output_activation = output_activation
         
         # ─── ENCODER ──────────────────────────────────────────────────────────
         # Input: (B, in_bands, H, W)
@@ -129,9 +132,6 @@ class HyperspectralAutoencoder(nn.Module):
             nn.ReLU(inplace=True),
         
             nn.ConvTranspose2d(64, in_bands, kernel_size=3),
-
-            # Output constrained to [0,1]
-            nn.Sigmoid()
         )
 
     def encode(self, x):
@@ -154,6 +154,8 @@ class HyperspectralAutoencoder(nn.Module):
             size=output_size,
             mode='bilinear'
         )
+        if self.output_activation == "sigmoid":
+            x_recon = torch.sigmoid(x_recon)
     
         return x_recon
 
@@ -291,12 +293,12 @@ def main():
     else:
         print(f"\n GPU Active: {torch.cuda.get_device_name(0)}")
     
-    # --- Pavia University ---
-    pu_patches = os.path.join(PROCESSED_DIR, "PaviaU_patches.npy")
-    if os.path.exists(pu_patches):
-        train_autoencoder("Pavia University", "pu", pu_patches)
-    else:
-        print(f"\n  [!] Error: {pu_patches} not found. Run Week 2 pipeline first.")
+    for dataset_name, prefix in [("Indian Pines", "ip"), ("Pavia University", "pu")]:
+        patches_file = os.path.join(PROCESSED_DIR, f"{prefix}_all_patches.npy")
+        if os.path.exists(patches_file):
+            train_autoencoder(dataset_name, prefix, patches_file)
+        else:
+            print(f"\n  [!] Error: {patches_file} not found. Run Week 2 pipeline first.")
 
     print("\n" + "═"*70)
     print("  Week 4 complete. Encoders are ready for embedding extraction.")

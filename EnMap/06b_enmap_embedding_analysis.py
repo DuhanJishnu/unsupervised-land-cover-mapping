@@ -9,9 +9,8 @@ KMeans (k=8) cluster labels on the CNN embeddings as the pseudo ground-truth
 to color the points in UMAP and t-SNE. This shows how PCA scattered the points
 versus how tightly the CNN Autoencoder grouped them.
 
-Also saves a "Raw Land Cover Map". Because enmap_train_patches_3.npy contains 
-25,000 sampled patches without original spatial coordinates, we arrange the 
-resulting 25,000 labels into a 100 x 250 grid to visualize the cluster distribution.
+Spatial maps require the coordinate and scene-ID artifacts written by the
+preprocessor. Random samples must never be reshaped into a synthetic map.
 
 Outputs saved to:
     - outputs/week6b/ -> UMAP/t-SNE comparison figures
@@ -24,6 +23,7 @@ import sys
 import time
 import warnings
 import importlib.util
+import json
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -193,7 +193,7 @@ def process_enmap_viz():
     print(f"  EnMAP — Embedding Space Analysis")
     print(f"{'═'*60}")
     
-    patches_file = os.path.join(PROCESSED_DIR, "enmap_train_patches_3.npy")
+    patches_file = os.path.join(PROCESSED_DIR, "enmap_train_patches.npy")
     encoder_file = os.path.join(MODELS_DIR, "enmap_encoder.pth")
     
     if not os.path.exists(patches_file):
@@ -230,45 +230,43 @@ def process_enmap_viz():
         "enmap_comparison_tsne.png", method="tsne"
     )
     
-    # ─── 5. RAW CNN CLUSTER MAP ──────────────────────────────────────────────
-    print("\n  [5] Creating 'Raw' EnMAP Cluster Map...")
-    N = cl_labels.shape[0]
-    
-    # We attempt to factorize N to make a reasonably shaped 2D image
-    # For exactly 25,000, 100 x 250 works well
-    # For other sizes, we will pad to a perfect square
-    if N == 25000:
-        H, W = 100, 250
-        raw_map_2d = cl_labels.reshape((H, W))
-        print(f"      Arranged {N} points into ({H}x{W}) synthetic mosaic.")
-    else:
-        side = int(np.ceil(np.sqrt(N)))
-        padded_labels = np.full(side * side, -1, dtype=int) # -1 code for 'empty'
-        padded_labels[:N] = cl_labels
-        raw_map_2d = padded_labels.reshape((side, side))
-        print(f"      Arranged {N} points into ({side}x{side}) padded synthetic mosaic.")
-        
-    map_path = os.path.join(OUTPUT_DIR, "enmap_raw_cnn_map.npy")
-    np.save(map_path, raw_map_2d)
-    print(f"      Saved raw land cover map to {map_path}")
-    
-    # Visual Render
+    # ─── 5. COORDINATE-PRESERVING SAMPLE MAPS ────────────────────────────────
+    print("\n  [5] Creating coordinate-preserving EnMAP sample maps...")
+    coords_file = os.path.join(PROCESSED_DIR, "enmap_train_coords.npy")
+    scene_ids_file = os.path.join(PROCESSED_DIR, "enmap_train_scene_ids.npy")
+    scenes_file = os.path.join(PROCESSED_DIR, "enmap_scenes.json")
+    required = [coords_file, scene_ids_file, scenes_file]
+    if not all(os.path.exists(path) for path in required):
+        print("      Coordinate artifacts are missing; no map will be fabricated.")
+        print("      Re-run EnMap/02b_enmap_preprocessing.py to generate them.")
+        return
+
+    coords = np.load(coords_file)
+    scene_ids = np.load(scene_ids_file)
+    with open(scenes_file, "r", encoding="utf-8") as stream:
+        scenes = json.load(stream)
+    if len(coords) != len(cl_labels) or len(scene_ids) != len(cl_labels):
+        raise ValueError("Patch, coordinate, scene-ID, and cluster arrays are misaligned")
+
     cmap = ListedColormap(["lightgray"] + ENMAP_COLORS)
-    # Re-normalize data so -1 goes to lightgray, 0..7 go to defined colors
-    mapped_data = raw_map_2d + 1 
-    
-    fig, ax = plt.subplots(figsize=(10, 4) if N == 25000 else (8, 8))
-    ax.imshow(mapped_data, cmap=cmap, interpolation='nearest', vmin=0, vmax=len(ENMAP_COLORS))
-    ax.set_title(f"EnMAP — Synthetic Raw CNN Map (from patches, k=8)", fontweight='bold')
-    
-    patches = [mpatches.Patch(color=ENMAP_COLORS[i], label=f'Cluster {i}') for i in range(8)]
-    if -1 in raw_map_2d:
-         patches.append(mpatches.Patch(color='lightgray', label='Padding'))
-         
-    ax.legend(handles=patches, loc='center left', bbox_to_anchor=(1, 0.5), fontsize=8)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, "enmap_raw_cnn_map.png"))
-    plt.close()
+    legend = [mpatches.Patch(color=ENMAP_COLORS[i], label=f"Cluster {i}") for i in range(8)]
+    legend.append(mpatches.Patch(color="lightgray", label="Not sampled"))
+    for scene in scenes:
+        scene_id = int(scene["scene_id"])
+        selected = scene_ids == scene_id
+        sample_map = np.full((int(scene["height"]), int(scene["width"])), -1, dtype=np.int16)
+        sample_coords = coords[selected]
+        sample_map[sample_coords[:, 0], sample_coords[:, 1]] = cl_labels[selected]
+        stem = f"enmap_scene_{scene_id:02d}_sample_clusters"
+        np.save(os.path.join(OUTPUT_DIR, f"{stem}.npy"), sample_map)
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+        ax.imshow(sample_map + 1, cmap=cmap, interpolation="nearest", vmin=0, vmax=8)
+        ax.set_title(f"{scene['name']} — sampled cluster assignments", fontweight="bold")
+        ax.legend(handles=legend, loc="center left", bbox_to_anchor=(1, 0.5), fontsize=8)
+        plt.tight_layout()
+        plt.savefig(os.path.join(OUTPUT_DIR, f"{stem}.png"))
+        plt.close()
 
 
 def main():

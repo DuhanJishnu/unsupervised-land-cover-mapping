@@ -25,7 +25,10 @@ import torch.nn as nn
 
 # Import stem + tokenization from the model file (shared architecture)
 import importlib.util
-spec = importlib.util.spec_from_file_location("hyperattnres_model", "06_hyperattnres_model.py")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+spec = importlib.util.spec_from_file_location(
+    "hyperattnres_model", os.path.join(SCRIPT_DIR, "06_hyperattnres_model.py")
+)
 _mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(_mod)
 
@@ -229,7 +232,7 @@ if __name__ == "__main__":
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"  Device: {DEVICE}")
 
-    for dataset, bands in [("Indian Pines", 176), ("Pavia University", 103)]:
+    for dataset, bands in [("Indian Pines", 200), ("Pavia University", 103)]:
         print(f"\n  [{dataset}]  bands={bands}")
         model = build_standard_transformer_ae(in_bands=bands).to(DEVICE)
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

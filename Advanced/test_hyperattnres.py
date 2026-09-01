@@ -22,7 +22,7 @@ har_mod = load_mod('hyperattnres_model', os.path.join(SCRIPT_DIR, '06_hyperattnr
 std_mod = load_mod('standard_transformer', os.path.join(SCRIPT_DIR, '07_standard_transformer_ae.py'))
 
 print("\n--- HyperAttnRes ---")
-for label, bands in [("Indian Pines", 176), ("Pavia U", 103)]:
+for label, bands in [("Indian Pines", 200), ("Pavia U", 103)]:
     model = har_mod.build_hyperattnres(in_bands=bands).cpu()
     n_p = sum(p.numel() for p in model.parameters() if p.requires_grad)
     x = torch.randn(4, bands, 7, 7)
@@ -34,7 +34,7 @@ for label, bands in [("Indian Pines", 176), ("Pavia U", 103)]:
     print(f"  {label}: params={n_p:,}  loss={loss.item():.4f}  emb={emb.shape}  norms={len(norms)} layers  OK")
 
 print("\n--- Standard Transformer AE ---")
-for label, bands in [("Indian Pines", 176), ("Pavia U", 103)]:
+for label, bands in [("Indian Pines", 200), ("Pavia U", 103)]:
     model = std_mod.build_standard_transformer_ae(in_bands=bands).cpu()
     n_p = sum(p.numel() for p in model.parameters() if p.requires_grad)
     x = torch.randn(4, bands, 7, 7)
@@ -46,7 +46,7 @@ for label, bands in [("Indian Pines", 176), ("Pavia U", 103)]:
     print(f"  {label}: params={n_p:,}  loss={loss.item():.4f}  emb={emb.shape}  norms={len(norms)} layers  OK")
 
 # Verify zero-init of pseudo-queries
-model = har_mod.build_hyperattnres(in_bands=176).cpu()
+model = har_mod.build_hyperattnres(in_bands=200).cpu()
 for block in model.encoder.transformer_blocks:
     for layer in block.layers:
         assert layer.attn_res_op.w.sum().item() == 0.0, "attn pseudo-query not zero-init!"

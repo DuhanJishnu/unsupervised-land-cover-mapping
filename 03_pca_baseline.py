@@ -386,7 +386,7 @@ def plot_tsne(embeddings, gt_labels, cluster_labels, class_names, dataset_label,
     print(f"Done ({elapsed:.1f}s)")
     
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
-    fig.suptitle(f"{dataset_label} — t-SNE of PCA Embeddings (30D → 2D)", 
+    fig.suptitle(f"{dataset_label} — t-SNE of PCA Embeddings ({embeddings.shape[1]}D → 2D)",
                  fontweight='bold', fontsize=14)
     
     # Color by ground truth
@@ -634,7 +634,13 @@ def main():
     print(f"\nOutput directory: {OUTPUT_DIR}\n")
     
     all_results = {}
-    
+
+    # ─── Indian Pines ────────────────────────────────────────────────────
+    ip_results = run_baseline(
+        "indian_pines", INDIAN_PINES_CLASSES, IP_COLORS, "ip", "Indian Pines"
+    )
+    all_results['Indian Pines'] = ip_results
+
     # ─── Pavia University ────────────────────────────────────────────────
     pu_results = run_baseline(
         "pavia_university", PAVIA_UNIVERSITY_CLASSES, PU_COLORS, "pu", "Pavia University"
@@ -646,7 +652,7 @@ def main():
     # ══════════════════════════════════════════════════════════════════════
     
     print("\n\n" + "═" * 70)
-    print("   BASELINE RESULTS — PCA Embeddings (30 Components)")
+    print(f"   BASELINE RESULTS — PCA Embeddings ({PreprocessingConfig().pca_components} Components)")
     print("═" * 70)
     
     table_rows = []
@@ -660,7 +666,7 @@ def main():
             m = results[key]
             table_rows.append([
                 dataset_name,
-                "PCA (30D)",
+                f"PCA ({PreprocessingConfig().pca_components}D)",
                 label,
                 f"{m['silhouette']:.4f}",
                 f"{m['dbi']:.4f}",

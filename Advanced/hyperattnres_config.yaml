@@ -44,13 +44,13 @@ datasets:
     code: "indian_pines"
     n_classes: 16
     patches_file: "processed_data/ip_all_patches.npy"
-    labels_file: "processed_data/ip_labels.npy"
+    labels_file: "processed_data/ip_all_labels.npy"
   pu:
     name: "Pavia University"
     code: "pavia_university"
     n_classes: 9
     patches_file: "processed_data/pu_all_patches.npy"
-    labels_file: "processed_data/pu_labels.npy"
+    labels_file: "processed_data/pu_all_labels.npy"
 
 # ── Output Dirs ───────────────────────────────────────────────────────────────
 output_dirs:

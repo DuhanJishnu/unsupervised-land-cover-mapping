@@ -293,9 +293,13 @@ def process_one_dataset(name, class_names, prefix, dataset_label):
 
 
 def main():
-    
+    # ─── Indian Pines ────────────────────────────────────────────────────
+    process_one_dataset(
+        "indian_pines", INDIAN_PINES_CLASSES, "ip", "Indian Pines"
+    )
+
     # ─── Pavia University ────────────────────────────────────────────────
-    pu_result = process_one_dataset(
+    process_one_dataset(
         "pavia_university", PAVIA_UNIVERSITY_CLASSES, "pu", "Pavia University"
     )
     

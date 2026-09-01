@@ -21,19 +21,17 @@ class PreprocessingConfig:
     normalization: str = "minmax"  # 'zscore' or 'minmax'
     
     # Noise band removal (0-indexed)
-    # Indian Pines: water absorption bands ~104-108, 150-163, 220
-    # These are standard bands known to be noisy in the AVIRIS sensor
-    ip_noisy_bands: List[int] = field(default_factory=lambda: 
-        list(range(103, 109)) + list(range(149, 164)) + [219]
-    )
+    # Indian_pines_corrected.mat already has the water-absorption bands removed.
+    # Never apply indices from the raw 220-band product to the corrected cube.
+    ip_noisy_bands: List[int] = field(default_factory=list)
     # Pavia University: ROSIS sensor — all 103 bands are usable
     pu_noisy_bands: List[int] = field(default_factory=list)
     
     # Patch extraction
-    patch_size: int = 11  # Spatial neighborhood size (11x11)
+    patch_size: int = 7
     
     # PCA (for baseline only)
-    pca_components: int = 64
+    pca_components: int = 30
     
     # Random seed for reproducibility
     random_seed: int = 42

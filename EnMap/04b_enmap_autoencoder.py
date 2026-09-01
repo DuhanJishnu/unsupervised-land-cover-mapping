@@ -80,7 +80,7 @@ def train_enmap_autoencoder():
     print(f"  Training Autoencoder: EnMAP")
     print(f"{'═'*70}")
     
-    patches_file = os.path.join(PROCESSED_DIR, "enmap_train_patches_3.npy")
+    patches_file = os.path.join(PROCESSED_DIR, "enmap_train_patches.npy")
     if not os.path.exists(patches_file):
         print(f"\n  [!] Error: {patches_file} not found. Run 02b_enmap_preprocessing.py first.")
         return
@@ -102,7 +102,11 @@ def train_enmap_autoencoder():
     print(f"  Batches per epoch: {len(loader)} (Batch size: {BATCH_SIZE})")
     
     # ─── Model Setup ────────────────────────────────────────────────────────
-    model = HyperspectralAutoencoder(in_bands=in_bands, embedding_dim=EMBEDDING_DIM)
+    # EnMAP patches are z-score normalized, so their reconstruction head must
+    # remain linear rather than constrain predictions to [0, 1].
+    model = HyperspectralAutoencoder(
+        in_bands=in_bands, embedding_dim=EMBEDDING_DIM, output_activation="linear"
+    )
     model = model.to(DEVICE)
     
     criterion = nn.MSELoss()

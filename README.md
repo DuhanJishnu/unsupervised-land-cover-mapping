@@ -6,17 +6,28 @@
 
 This project studies unsupervised land-cover mapping from hyperspectral imagery using PCA baselines, CNN autoencoder embeddings, clustering, and spatial post-processing. Experiments cover Indian Pines, Pavia University, and EnMAP L2A scenes, with an additional HyperAttnRes transformer extension for learned spectral-spatial representations.
 
-## Key Results
+> **Research status:** the legacy week-based pipeline is being rebuilt after a
+> repository-wide reproducibility and methodology audit. Existing headline
+> numbers are historical and should not yet be treated as paper results. See
+> the comprehensive [Master Research Ledger](docs/RESEARCH_LEDGER.md), plus the
+> focused [Project Audit](docs/PROJECT_AUDIT.md),
+> [Research Plan](docs/RESEARCH_PLAN.md), and
+> [Experiment Log](docs/EXPERIMENT_LOG.md).
 
-Representative clustering results from the generated CSV outputs:
+## Current Development Results
 
-| Dataset | Embedding | Method | Silhouette ↑ | DBI ↓ | ARI ↑ |
-| --- | --- | --- | ---: | ---: | ---: |
-| Indian Pines | PCA (30D) | DBSCAN | 0.3374 | 1.1671 | 0.4783 |
-| Indian Pines | CNN AE (64D) | Hierarchical | 0.0842 | 2.3097 | 0.2800 |
-| Pavia University | PCA (30D) | GMM | 0.0677 | 3.1322 | 0.3663 |
-| Pavia University | CNN AE (64D) | KMeans | 0.0837 | 2.3284 | 0.3387 |
-| Pavia University | CNN AE (64D) | HDBSCAN | 0.4077 | 1.4367 | 0.0057 |
+The first controlled Indian Pines pilot uses one seed and three epochs. It is a
+model-selection diagnostic, not a final paper table.
+
+| Method | ARI | NMI | ACC | Macro-F1 | mIoU |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Raw spectrum + KMeans | 0.2238 | 0.4423 | 0.3751 | 0.3527 | 0.2431 |
+| Reconstruction-only embedding | 0.2264 | 0.4196 | 0.3366 | 0.1837 | 0.1179 |
+| Full objective without spatial term | 0.2634 | 0.4193 | 0.4057 | 0.2683 | 0.1867 |
+| Full objective | 0.2635 | 0.4189 | 0.4116 | 0.2810 | 0.1951 |
+
+The learned objective currently improves ARI and matched accuracy, but not NMI,
+Macro-F1, or mIoU. See the experiment log for failure analysis and limitations.
 
 ## Pipeline
 
@@ -51,11 +62,76 @@ Large raw imagery, processed arrays, trained weights, and generated outputs are 
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
+source .venv/bin/activate          # macOS/Linux
+# .venv\Scripts\activate          # Windows PowerShell
 pip install -r requirements.txt
 ```
 
+For exact replication of the tested macOS arm64/Python 3.9 environment, use
+`requirements-lock.txt`. The looser `requirements.txt` remains the portable
+cross-platform specification.
+
 ## Usage
+
+Run a manifest-producing research baseline (recommended):
+
+```bash
+python research_pipeline.py baseline --dataset ip --representation pca --clusterer kmeans
+python research_pipeline.py baseline --dataset pu --representation pca --clusterer kmeans
+```
+
+Each run writes its configuration, dataset hashes, Git commit, metrics, cluster
+map, and embeddings under `outputs/research/<run-id>/`.
+
+Train the clustering-aligned model with the default five seeds:
+
+```bash
+python research_pipeline.py train --dataset ip --ablation full
+python research_pipeline.py train --dataset pu --ablation full
+```
+
+Run the development-selected label-free stopping protocol. `scheduler-epochs`
+fixes the learning-rate trajectory even when different scenes stop at different
+epochs:
+
+```bash
+python research_pipeline.py train --dataset pu --ablation no_spatial \
+  --epochs 8 --scheduler-epochs 8 --early-stop-usage-entropy 0.85
+```
+
+Use `--evaluation-every 1` only on a declared development scene; it reads
+ground truth after checkpoints and would bias a held-scene result.
+
+Estimate the cluster count without labels instead of using oracle `k`:
+
+```bash
+python research_pipeline.py train --dataset pu --k-range 4 14
+```
+
+Run a controlled objective ablation:
+
+```bash
+python research_pipeline.py train --dataset pu --ablation no_spatial --seeds 42 43 44 45 46
+```
+
+Available ablations are `reconstruction`, `no_spectral_angle`, `no_view`,
+`no_prototype`, `no_spatial`, and `full`.
+
+Use internal overclustering without changing final evaluation `k`:
+
+```bash
+python research_pipeline.py train --dataset ip --ablation full --prototype-multiplier 2
+```
+
+Generate JSON, CSV, per-class CSV, and paper-ready Markdown from completed runs:
+
+```bash
+python research_pipeline.py compare \
+  --runs outputs/research/<baseline-run> outputs/research/<training-group> \
+  --output-dir outputs/research/comparison
+```
+
+The original week-based workflows remain available during the migration:
 
 Run the Indian Pines and Pavia University workflow:
 
@@ -73,7 +149,12 @@ Outputs are written to `outputs/`, trained models to `models/`, and generated Nu
 
 ## Methodology
 
-The baseline pipeline normalizes hyperspectral bands, removes known noisy AVIRIS bands for Indian Pines, extracts spatial patches, and evaluates PCA embeddings with multiple clustering algorithms. The CNN autoencoder learns compact 64-dimensional embeddings from hyperspectral patches before clustering. The smoothing stage applies spatial majority filtering to reduce salt-and-pepper artifacts in raw cluster maps.
+The rebuilt research pipeline robustly normalizes valid pixels, uses all 200
+bands of the already-corrected Indian Pines cube, extracts reflect-padded
+patches lazily, learns normalized spectral-spatial embeddings, and evaluates
+clusters with permutation-safe semantic metrics. The original majority filter
+and advanced architectures remain comparison candidates rather than assumed
+improvements.
 
 ## Advanced: HyperAttnRes
 

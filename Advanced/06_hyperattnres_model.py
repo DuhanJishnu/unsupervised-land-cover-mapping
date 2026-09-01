@@ -581,7 +581,7 @@ if __name__ == "__main__":
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"  Device: {DEVICE}")
 
-    for dataset, bands in [("Indian Pines", 176), ("Pavia University", 103)]:
+    for dataset, bands in [("Indian Pines", 200), ("Pavia University", 103)]:
         print(f"\n  [{dataset}] bands={bands}")
         model = build_hyperattnres(in_bands=bands).to(DEVICE)
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

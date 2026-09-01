@@ -14,6 +14,7 @@ dataset for unsupervised Autoencoder training.
 import os
 import sys
 import glob
+import json
 import numpy as np
 import tifffile
 import matplotlib.pyplot as plt
@@ -114,6 +115,9 @@ def process_enmap_data():
     print(f"Targeting {SAMPLES_PER_IMAGE:,} patches per image.")
     
     all_patches = []
+    all_coords = []
+    all_scene_ids = []
+    scene_metadata = []
     
     for i, filepath in enumerate(tif_files):
         img_name = os.path.basename(os.path.dirname(filepath))
@@ -143,15 +147,26 @@ def process_enmap_data():
         
         # Random Sampling
         print(f"  -> Sampling up to {SAMPLES_PER_IMAGE:,} patches (7x7) from valid centers...")
-        patches, _ = extract_sampled_patches(
+        patches, coords = extract_sampled_patches(
             data,
             patch_size=PATCH_SIZE,
             num_samples=SAMPLES_PER_IMAGE,
             seed=RANDOM_SEED+i,
-            valid_mask=valid_centers,
+            # A valid training target must have a complete center spectrum.
+            valid_mask=complete_centers,
         )
         
         all_patches.append(patches)
+        all_coords.append(coords)
+        all_scene_ids.append(np.full(len(coords), i, dtype=np.int32))
+        scene_metadata.append({
+            "scene_id": i,
+            "name": img_name,
+            "source": os.path.relpath(filepath, BASE_DIR),
+            "height": int(data.shape[0]),
+            "width": int(data.shape[1]),
+            "bands": int(data.shape[2]),
+        })
         print(f"  -> Extracted batch shape: {patches.shape} ({patches.nbytes / 1024**2:.1f} MB)")
         
         # Clear memory
@@ -165,6 +180,8 @@ def process_enmap_data():
     print("\n" + "-"*50)
     print("Consolidating all sampled patches...")
     final_patches = np.concatenate(all_patches, axis=0)
+    final_coords = np.concatenate(all_coords, axis=0)
+    final_scene_ids = np.concatenate(all_scene_ids, axis=0)
     
     print(f"Final dataset shape: {final_patches.shape}")
     print(f"Total memory size: {final_patches.nbytes / 1024**3:.2f} GB")
@@ -173,6 +190,10 @@ def process_enmap_data():
     out_file = os.path.join(PROCESSED_DIR, "enmap_train_patches.npy")
     print(f"Saving to: {out_file}")
     np.save(out_file, final_patches)
+    np.save(os.path.join(PROCESSED_DIR, "enmap_train_coords.npy"), final_coords)
+    np.save(os.path.join(PROCESSED_DIR, "enmap_train_scene_ids.npy"), final_scene_ids)
+    with open(os.path.join(PROCESSED_DIR, "enmap_scenes.json"), "w", encoding="utf-8") as stream:
+        json.dump(scene_metadata, stream, indent=2)
     
     print("="*70)
     print(" ENMAP PREPROCESSING COMPLETE!")
